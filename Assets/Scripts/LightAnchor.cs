@@ -2,53 +2,63 @@ using UnityEngine;
 
 public class LightAnchor : MonoBehaviour
 {
-    [Header("State")]
-    public bool IsLit = false;
+    // -------------------------
+    // Параметры фонаря
+    // -------------------------
+    public bool IsLit { get; private set; } = false;
 
-    [Header("Teleport")]
-    public Transform teleportPoint;
+    [SerializeField] private Renderer visualRenderer;   // Ссылка на меш, чтобы менять цвет
+    [SerializeField] public Transform teleportPoint;   // Точка телепорта
 
-    [Header("Visuals")]
-    public Renderer[] renderers; // все рендереры в префабе, которые нужно подсвечивать
-    private Color defaultColor = Color.yellow;
-    private Color highlightColor = Color.white;
+    private Color defaultColor = Color.gray;
+    private Color litColor = Color.yellow;
 
     void Start()
     {
-        // Если рендереры не назначены, пробуем найти их на дочерних объектах
-        if (renderers == null || renderers.Length == 0)
-        {
-            renderers = GetComponentsInChildren<Renderer>();
-        }
-
-        UpdateVisual();
+        if (visualRenderer != null)
+            visualRenderer.material.color = defaultColor;
     }
 
+    // -------------------------
+    // Зажечь фонарь
+    // -------------------------
     public void LightUp()
     {
         IsLit = true;
-        UpdateVisual();
+        if (visualRenderer != null)
+            visualRenderer.material.color = litColor;
     }
 
+    // -------------------------
+    // Потушить фонарь
+    // -------------------------
+    public void Extinguish()
+    {
+        IsLit = false;
+        if (visualRenderer != null)
+            visualRenderer.material.color = defaultColor;
+    }
+
+    // -------------------------
+    // Подсветка при взгляде
+    // -------------------------
     public void SetHighlight(bool highlight)
     {
-        if (!IsLit) return;
+        if (visualRenderer == null) return;
 
-        foreach (var rend in renderers)
-        {
-            if (highlight)
-                rend.material.color = highlightColor;
-            else
-                rend.material.color = defaultColor;
-        }
+        if (highlight && IsLit)
+            visualRenderer.material.color = Color.cyan; // подсветка при взгляде
+        else if (IsLit)
+            visualRenderer.material.color = litColor;
+        else
+            visualRenderer.material.color = defaultColor;
     }
 
-    private void UpdateVisual()
+    // -------------------------
+    // Точка телепорта для игрока
+    // -------------------------
+    public Transform GetTeleportPoint()
     {
-        Color c = IsLit ? defaultColor : Color.gray;
-        foreach (var rend in renderers)
-        {
-            rend.material.color = c;
-        }
+        return teleportPoint != null ? teleportPoint : this.transform;
     }
 }
