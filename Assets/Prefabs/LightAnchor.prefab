@@ -25,7 +25,7 @@ Transform:
   m_GameObject: {fileID: 5897012849364247528}
   serializedVersion: 2
   m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
-  m_LocalPosition: {x: 1.27, y: -10.95, z: -18.52}
+  m_LocalPosition: {x: 10.09, y: -4.92, z: -12.13}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -59,7 +59,7 @@ Transform:
   m_GameObject: {fileID: 6504915398510971481}
   serializedVersion: 2
   m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
-  m_LocalPosition: {x: 4.03, y: -8.63, z: -12.13}
+  m_LocalPosition: {x: 6.24, y: -3.73, z: -12.13}
   m_LocalScale: {x: 2.0425558, y: 5.212027, z: 2.0425558}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -150,7 +150,7 @@ GameObject:
   - component: {fileID: 7051878256915212353}
   m_Layer: 0
   m_Name: LightAnchor
-  m_TagString: Untagged
+  m_TagString: LightAnchor
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
@@ -165,7 +165,7 @@ Transform:
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
   m_LocalPosition: {x: 48.68138, y: 337.96317, z: -6.1363244}
-  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_LocalScale: {x: 0.97172, y: 0.97172, z: 0.97172}
   m_ConstrainProportionsScale: 0
   m_Children:
   - {fileID: 1856917942701565892}
@@ -184,5 +184,9 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 1e1b328abffbb4c4fadc7d1d6cd3116a, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  isLit: 0
   visualRenderer: {fileID: 791809914056961271}
   teleportPoint: {fileID: 6436623829142158559}
+  defaultColor: {r: 0.5, g: 0.5, b: 0.5, a: 1}
+  litColor: {r: 1, g: 0.92156863, b: 0.015686275, a: 1}
+  highlightColor: {r: 0, g: 1, b: 1, a: 1}

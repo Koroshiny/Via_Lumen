@@ -2,21 +2,22 @@ using UnityEngine;
 
 public class LightAnchor : MonoBehaviour
 {
-    // -------------------------
-    // Параметры фонаря
-    // -------------------------
-    public bool IsLit { get; private set; } = false;
+    [Header("State")]
+    [SerializeField] private bool isLit;   // ? ГАЛОЧКА В ИНСПЕКТОРЕ
+    public bool IsLit => isLit;
 
-    [SerializeField] private Renderer visualRenderer;   // Ссылка на меш, чтобы менять цвет
-    [SerializeField] public Transform teleportPoint;   // Точка телепорта
+    [Header("References")]
+    [SerializeField] private Renderer visualRenderer;
+    [SerializeField] private Transform teleportPoint;
 
-    private Color defaultColor = Color.gray;
-    private Color litColor = Color.yellow;
+    [Header("Colors")]
+    [SerializeField] private Color defaultColor = Color.gray;
+    [SerializeField] private Color litColor = Color.yellow;
+    [SerializeField] private Color highlightColor = Color.cyan;
 
     void Start()
     {
-        if (visualRenderer != null)
-            visualRenderer.material.color = defaultColor;
+        UpdateVisual();
     }
 
     // -------------------------
@@ -24,9 +25,8 @@ public class LightAnchor : MonoBehaviour
     // -------------------------
     public void LightUp()
     {
-        IsLit = true;
-        if (visualRenderer != null)
-            visualRenderer.material.color = litColor;
+        isLit = true;
+        UpdateVisual();
     }
 
     // -------------------------
@@ -34,9 +34,8 @@ public class LightAnchor : MonoBehaviour
     // -------------------------
     public void Extinguish()
     {
-        IsLit = false;
-        if (visualRenderer != null)
-            visualRenderer.material.color = defaultColor;
+        isLit = false;
+        UpdateVisual();
     }
 
     // -------------------------
@@ -46,19 +45,27 @@ public class LightAnchor : MonoBehaviour
     {
         if (visualRenderer == null) return;
 
-        if (highlight && IsLit)
-            visualRenderer.material.color = Color.cyan; // подсветка при взгляде
-        else if (IsLit)
-            visualRenderer.material.color = litColor;
+        if (highlight && isLit)
+            visualRenderer.material.color = highlightColor;
         else
-            visualRenderer.material.color = defaultColor;
+            UpdateVisual();
     }
 
     // -------------------------
-    // Точка телепорта для игрока
+    // Обновление цвета
+    // -------------------------
+    void UpdateVisual()
+    {
+        if (visualRenderer == null) return;
+
+        visualRenderer.material.color = isLit ? litColor : defaultColor;
+    }
+
+    // -------------------------
+    // Точка телепорта
     // -------------------------
     public Transform GetTeleportPoint()
     {
-        return teleportPoint != null ? teleportPoint : this.transform;
+        return teleportPoint != null ? teleportPoint : transform;
     }
 }

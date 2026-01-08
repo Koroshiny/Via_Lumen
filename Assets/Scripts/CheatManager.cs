@@ -1,114 +1,99 @@
-using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.SceneManagement;
 
 public class CheatManager : MonoBehaviour
 {
-    [Header("References")]
-    [SerializeField] PlayerController player;
-    [SerializeField] Transform startLevelPoint;   // объект, куда телепорт на старт
-    [SerializeField] Transform endLevelPoint;     // объект, куда телепорт в конец уровня
+    [Header("Player")]
+    [SerializeField] private Transform player;
 
-    [Header("Light Anchors")]
-    [SerializeField] LightAnchor[] allAnchors;   // все фонари на уровне
+    [Header("Teleport Points")]
+    [SerializeField] private Transform levelStartPoint;
+    [SerializeField] private Transform levelEndPoint;
 
-    [Header("Settings")]
-    [SerializeField] string[] levelNames;        // список сцен по порядку
-    [SerializeField] bool debugLogs = true;
+    [Header("Cheat Keys")]
+    [SerializeField] private KeyCode teleportToStartKey = KeyCode.F1;
+    [SerializeField] private KeyCode teleportToEndKey = KeyCode.F2;
+    [SerializeField] private KeyCode lightAllKey = KeyCode.F3;
+    [SerializeField] private KeyCode extinguishAllKey = KeyCode.F4;
+    [SerializeField] private KeyCode restartLevelKey = KeyCode.F5;
+    [SerializeField] private KeyCode nextLevelKey = KeyCode.F6;
+    [SerializeField] private KeyCode previousLevelKey = KeyCode.F7;
 
     void Update()
     {
-        if (Input.GetKeyDown(KeyCode.F1))
-            TeleportToStart();
+        if (Input.GetKeyDown(teleportToStartKey))
+            TeleportTo(levelStartPoint);
 
-        if (Input.GetKeyDown(KeyCode.F2))
-            TeleportToEnd();
+        if (Input.GetKeyDown(teleportToEndKey))
+            TeleportTo(levelEndPoint);
 
-        if (Input.GetKeyDown(KeyCode.F3))
-            LightUpAllAnchors();
+        if (Input.GetKeyDown(lightAllKey))
+            LightAllAnchors();
 
-        if (Input.GetKeyDown(KeyCode.F4))
+        if (Input.GetKeyDown(extinguishAllKey))
             ExtinguishAllAnchors();
 
-        if (Input.GetKeyDown(KeyCode.F5))
+        if (Input.GetKeyDown(restartLevelKey))
             RestartLevel();
 
-        if (Input.GetKeyDown(KeyCode.F6))
-            NextLevel();
+        if (Input.GetKeyDown(nextLevelKey))
+            LoadNextLevel();
+
+        if (Input.GetKeyDown(previousLevelKey))
+            LoadPreviousLevel();
     }
 
-    void TeleportToStart()
+    // -------------------------
+    // Телепорт
+    // -------------------------
+    void TeleportTo(Transform target)
     {
-        if (startLevelPoint != null && player != null)
-        {
-            player.transform.position = startLevelPoint.position;
-            if (debugLogs) Debug.Log("[Cheat] Teleported player to start point");
-        }
+        if (player == null || target == null) return;
+
+        player.position = target.position;
+        Debug.Log($"[Cheat] Teleport to {target.name}");
     }
 
-    void TeleportToEnd()
+    // -------------------------
+    // Фонари
+    // -------------------------
+    void LightAllAnchors()
     {
-        if (endLevelPoint != null && player != null)
-        {
-            player.transform.position = endLevelPoint.position;
-            if (debugLogs) Debug.Log("[Cheat] Teleported player to end point");
-        }
-    }
+        LightAnchor[] anchors = FindObjectsOfType<LightAnchor>();
+        foreach (var a in anchors)
+            a.LightUp();
 
-    void LightUpAllAnchors()
-    {
-        foreach (var anchor in allAnchors)
-        {
-            if (anchor != null && !anchor.IsLit)
-                anchor.LightUp();
-        }
-        if (debugLogs) Debug.Log("[Cheat] All anchors lit");
+        Debug.Log("[Cheat] All anchors lit");
     }
 
     void ExtinguishAllAnchors()
     {
-        foreach (var anchor in allAnchors)
-        {
-            if (anchor != null && anchor.IsLit)
-                anchor.Extinguish();
-        }
-        if (debugLogs) Debug.Log("[Cheat] All anchors extinguished");
+        LightAnchor[] anchors = FindObjectsOfType<LightAnchor>();
+        foreach (var a in anchors)
+            a.Extinguish();
+
+        Debug.Log("[Cheat] All anchors extinguished");
     }
 
+    // -------------------------
+    // Уровни
+    // -------------------------
     void RestartLevel()
     {
-        if (player != null)
-        {
-            // Можно сбросить настройки игрока (позиция, телепорт, фонари и т.д.)
-            TeleportToStart();
-            ExtinguishAllAnchors();
-            if (debugLogs) Debug.Log("[Cheat] Level restarted with default settings");
-        }
+        SceneManager.LoadScene(SceneManager.GetActiveScene().buildIndex);
     }
 
-    void NextLevel()
+    void LoadNextLevel()
     {
-        int currentIndex = -1;
-        string currentScene = SceneManager.GetActiveScene().name;
+        int index = SceneManager.GetActiveScene().buildIndex;
+        if (index + 1 < SceneManager.sceneCountInBuildSettings)
+            SceneManager.LoadScene(index + 1);
+    }
 
-        for (int i = 0; i < levelNames.Length; i++)
-        {
-            if (levelNames[i] == currentScene)
-            {
-                currentIndex = i;
-                break;
-            }
-        }
-
-        if (currentIndex != -1)
-        {
-            int nextIndex = (currentIndex + 1) % levelNames.Length;
-            SceneManager.LoadScene(levelNames[nextIndex]);
-            if (debugLogs) Debug.Log($"[Cheat] Loaded next level: {levelNames[nextIndex]}");
-        }
-        else
-        {
-            if (debugLogs) Debug.LogWarning("[Cheat] Current scene not found in levelNames array");
-        }
+    void LoadPreviousLevel()
+    {
+        int index = SceneManager.GetActiveScene().buildIndex;
+        if (index - 1 >= 0)
+            SceneManager.LoadScene(index - 1);
     }
 }

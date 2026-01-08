@@ -1,4 +1,3 @@
-using System.Collections.Generic;
 using UnityEngine;
 
 public class PlayerController : MonoBehaviour
@@ -8,7 +7,6 @@ public class PlayerController : MonoBehaviour
     [SerializeField] Rigidbody rb;
     [SerializeField] float jumpForce = 7f;
 
-    float currentSpeed;
     Vector3 direction;
     bool isGrounded = true;
 
@@ -18,14 +16,14 @@ public class PlayerController : MonoBehaviour
     [SerializeField] float interactionRadius = 2f;
 
     [Header("Look Settings")]
-    [SerializeField] float maxLookDistance = 20f; // Дальность рейкаста (Raycast)
-    [SerializeField] float lookRadius = 10f;      // Радиус проверки фонарей для подсветки/телепорта
+    [SerializeField] float maxLookDistance = 20f;
+    [SerializeField] float lookRadius = 10f;
 
-    LightAnchor currentAnchor;        // ближайший фонарь, к которому игрок привязан
-    LightAnchor previousAnchor;       // для телепортации
-    LightAnchor highlightedAnchor;    // фонарь, на который игрок смотрит
+    LightAnchor currentAnchor;
+    LightAnchor previousAnchor;
+    LightAnchor highlightedAnchor;
 
-    bool isTeleporting = false;
+    bool isTeleporting;
     float teleportTimer;
     Vector3 teleportStart;
     Vector3 teleportEnd;
@@ -33,7 +31,6 @@ public class PlayerController : MonoBehaviour
     [Header("Debug")]
     [SerializeField] LightAnchor debugCurrentAnchor;
     [SerializeField] LightAnchor debugPreviousAnchor;
-    [SerializeField] float debugMaxLookDistance;
 
     [Header("References")]
     [SerializeField] Camera playerCamera;
@@ -42,8 +39,6 @@ public class PlayerController : MonoBehaviour
     void Start()
     {
         rb = GetComponent<Rigidbody>();
-        currentSpeed = movementSpeed;
-        debugMaxLookDistance = maxLookDistance;
 
         if (lineRenderer != null)
             lineRenderer.positionCount = 0;
@@ -73,7 +68,7 @@ public class PlayerController : MonoBehaviour
             return;
         }
 
-        rb.MovePosition(transform.position + direction * currentSpeed * Time.deltaTime);
+        rb.MovePosition(transform.position + direction * movementSpeed * Time.deltaTime);
     }
 
     void OnCollisionEnter(Collision collision)
@@ -81,13 +76,15 @@ public class PlayerController : MonoBehaviour
         isGrounded = true;
     }
 
+    // -------------------------
+    // Movement
+    // -------------------------
     void HandleMovement()
     {
-        float moveHorizontal = Input.GetAxis("Horizontal");
-        float moveVertical = Input.GetAxis("Vertical");
+        float h = Input.GetAxis("Horizontal");
+        float v = Input.GetAxis("Vertical");
 
-        direction = new Vector3(moveHorizontal, 0f, moveVertical);
-        direction = transform.TransformDirection(direction);
+        direction = transform.TransformDirection(new Vector3(h, 0f, v));
 
         if (Input.GetKeyDown(KeyCode.Space) && isGrounded)
         {
@@ -96,34 +93,37 @@ public class PlayerController : MonoBehaviour
         }
     }
 
+    // -------------------------
+    // Look logic
+    // -------------------------
     void UpdateLookingAnchor()
     {
-        LightAnchor anchorLookingAt = null;
+        LightAnchor newAnchor = null;
 
         Ray ray = new Ray(playerCamera.transform.position, playerCamera.transform.forward);
         if (Physics.Raycast(ray, out RaycastHit hit, maxLookDistance))
         {
-            LightAnchor hitAnchor = hit.collider.GetComponentInParent<LightAnchor>();
-            if (hitAnchor != null && hitAnchor.IsLit && hitAnchor != currentAnchor)
-            {
-                anchorLookingAt = hitAnchor;
-            }
+            LightAnchor la = hit.collider.GetComponentInParent<LightAnchor>();
+            if (la != null && la.IsLit && la != currentAnchor)
+                newAnchor = la;
         }
 
-        // Снимаем подсветку с предыдущего, если смотрим на другой
-        if (highlightedAnchor != null && highlightedAnchor != anchorLookingAt)
+        if (highlightedAnchor != null && highlightedAnchor != newAnchor)
             highlightedAnchor.SetHighlight(false);
 
-        highlightedAnchor = anchorLookingAt;
+        highlightedAnchor = newAnchor;
 
         if (highlightedAnchor != null)
             highlightedAnchor.SetHighlight(true);
     }
 
+    // -------------------------
+    // Current anchor
+    // -------------------------
     void UpdateCurrentAnchor()
     {
-        // Находим ближайший зажженный фонарь в радиусе lookRadius
         Collider[] hits = Physics.OverlapSphere(transform.position, lookRadius);
+
         LightAnchor nearest = null;
         float minDist = float.MaxValue;
 
@@ -132,11 +132,11 @@ public class PlayerController : MonoBehaviour
             LightAnchor la = hit.GetComponentInParent<LightAnchor>();
             if (la != null && la.IsLit)
             {
-                float dist = Vector3.Distance(transform.position, la.transform.position);
-                if (dist < minDist)
+                float d = Vector3.Distance(transform.position, la.transform.position);
+                if (d < minDist)
                 {
+                    minDist = d;
                     nearest = la;
-                    minDist = dist;
                 }
             }
         }
@@ -145,41 +145,41 @@ public class PlayerController : MonoBehaviour
             currentAnchor = nearest;
     }
 
+    // -------------------------
+    // Light up
+    // -------------------------
     void TrySetCurrentAnchor()
     {
         Collider[] hits = Physics.OverlapSphere(transform.position, interactionRadius);
 
         foreach (var hit in hits)
         {
-            LightAnchor anchor = hit.GetComponentInParent<LightAnchor>();
-            if (anchor != null && !anchor.IsLit)
+            LightAnchor la = hit.GetComponentInParent<LightAnchor>();
+            if (la != null && !la.IsLit)
             {
                 previousAnchor = currentAnchor;
-                currentAnchor = anchor;
-
-                anchor.LightUp();
-                Debug.Log($"[Player] Anchor lit: {anchor.name}");
+                currentAnchor = la;
+                la.LightUp();
                 return;
             }
         }
     }
 
+    // -------------------------
+    // Teleport
+    // -------------------------
     void TryTeleport()
     {
         if (highlightedAnchor == null)
-        {
-            Debug.Log("[Player] Teleport failed: not looking at any lit anchor");
             return;
-        }
 
         teleportStart = transform.position;
-        teleportEnd = highlightedAnchor.teleportPoint.position;
+        teleportEnd = highlightedAnchor.GetTeleportPoint().position;
+
         teleportTimer = 0f;
         isTeleporting = true;
 
         previousAnchor = currentAnchor;
-
-        Debug.Log($"[Player] Teleporting from {teleportStart} to {teleportEnd}");
     }
 
     void TeleportArc()
@@ -196,21 +196,22 @@ public class PlayerController : MonoBehaviour
             return;
         }
 
-        Vector3 midPoint = (teleportStart + teleportEnd) / 2f;
-        midPoint.y += teleportArcHeight;
+        Vector3 mid = (teleportStart + teleportEnd) * 0.5f;
+        mid.y += teleportArcHeight;
 
-        Vector3 a = Vector3.Lerp(teleportStart, midPoint, t);
-        Vector3 b = Vector3.Lerp(midPoint, teleportEnd, t);
-        Vector3 position = Vector3.Lerp(a, b, t);
+        Vector3 pos =
+            Vector3.Lerp(
+                Vector3.Lerp(teleportStart, mid, t),
+                Vector3.Lerp(mid, teleportEnd, t),
+                t);
 
-        rb.MovePosition(position);
+        rb.MovePosition(pos);
 
-        // Линия дуги
         if (lineRenderer != null)
         {
             lineRenderer.positionCount = 3;
             lineRenderer.SetPosition(0, teleportStart);
-            lineRenderer.SetPosition(1, midPoint);
+            lineRenderer.SetPosition(1, mid);
             lineRenderer.SetPosition(2, teleportEnd);
         }
     }
