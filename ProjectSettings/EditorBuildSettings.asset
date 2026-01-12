@@ -6,6 +6,12 @@ EditorBuildSettings:
   serializedVersion: 2
   m_Scenes:
   - enabled: 1
-    path: Assets/Scenes/Level_01_Lighthouse.unity
-    guid: 99c9720ab356a0642a771bea13969a05
+    path: Assets/Scenes/Menu.unity
+    guid: 2a5b7a78d73a8fb47bcfe21ecfc48f73
+  - enabled: 1
+    path: Assets/Scenes/Game_Demo.unity
+    guid: 623684ed75ad74345b0126eb84df335a
+  - enabled: 1
+    path: Assets/Scenes/Credits.unity
+    guid: 71880f677900c3441866865397a5ce59
   m_configObjects: {}
