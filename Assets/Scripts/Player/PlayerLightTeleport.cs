@@ -1,4 +1,3 @@
-using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 
@@ -38,7 +37,7 @@ public class PlayerLightTeleport : MonoBehaviour
             if (state == TeleportState.Normal)
                 EnterTeleportMode();
             else
-                ExitTeleportModeWithoutTeleport(); // выход без подтверждения
+                ExitTeleportModeWithoutTeleport();
         }
 
         // Обработка выбора цели и телепорта
@@ -91,14 +90,11 @@ public class PlayerLightTeleport : MonoBehaviour
             thirdPersonCamera.gameObject.SetActive(false);
         }
 
-        // Включаем FPS камеру и перемещаем на AnchorViewPoint
+        // Включаем FPS камеру и перемещаем только её на AnchorViewPoint
         if (firstPersonTeleportCamera != null && currentAnchor.ViewPoint != null)
         {
             firstPersonTeleportCamera.gameObject.SetActive(true);
             firstPersonTeleportCamera.enabled = true;
-
-            transform.position = currentAnchor.ViewPoint.position;
-            transform.rotation = currentAnchor.ViewPoint.rotation;
 
             firstPersonTeleportCamera.transform.position = currentAnchor.ViewPoint.position;
             firstPersonTeleportCamera.transform.rotation = currentAnchor.ViewPoint.rotation;
@@ -123,10 +119,8 @@ public class PlayerLightTeleport : MonoBehaviour
             transform.rotation = currentAnchor.GetTeleportPoint().rotation;
         }
 
-        // Включаем визуальные элементы
+        // Включаем визуальные элементы и движение
         playerVisualRoot.SetActive(true);
-
-        // Включаем движение
         playerController.SetMovementEnabled(true);
 
         // Включаем 3rd person камеру
@@ -143,10 +137,7 @@ public class PlayerLightTeleport : MonoBehaviour
             firstPersonTeleportCamera.gameObject.SetActive(false);
         }
 
-        // Выключаем SelectVFX
         ClearSelectionVFX();
-
-        // Очищаем список целей
         availableAnchors.Clear();
     }
 
@@ -158,16 +149,24 @@ public class PlayerLightTeleport : MonoBehaviour
         state = TeleportState.Normal;
 
         // Телепортируем игрока на ExitPoint выбранного фонаря
-        if (availableAnchors.Count > 0 && selectedIndex < availableAnchors.Count)
+        if (availableAnchors.Count > 0 && selectedIndex >= 0 && selectedIndex < availableAnchors.Count)
         {
-            transform.position = availableAnchors[selectedIndex].ExitPoint.position;
-            transform.rotation = availableAnchors[selectedIndex].ExitPoint.rotation;
+            var target = availableAnchors[selectedIndex];
+            if (target != null && target.ExitPoint != null)
+            {
+                transform.position = target.ExitPoint.position;
+                transform.rotation = target.ExitPoint.rotation;
+            }
+        }
+        else if (currentAnchor != null && currentAnchor.GetTeleportPoint() != null)
+        {
+            // Если целей нет, возвращаем игрока на ExitPoint текущего фонаря
+            transform.position = currentAnchor.GetTeleportPoint().position;
+            transform.rotation = currentAnchor.GetTeleportPoint().rotation;
         }
 
-        // Включаем визуальные элементы
+        // Включаем визуальные элементы и движение
         playerVisualRoot.SetActive(true);
-
-        // Включаем движение
         playerController.SetMovementEnabled(true);
 
         // Включаем 3rd person камеру
@@ -184,13 +183,13 @@ public class PlayerLightTeleport : MonoBehaviour
             firstPersonTeleportCamera.gameObject.SetActive(false);
         }
 
-        // Выключаем SelectVFX
         ClearSelectionVFX();
-
-        // Очищаем список целей
         availableAnchors.Clear();
     }
 
+    // -------------------------
+    // Сбор доступных целей
+    // -------------------------
     void CollectAvailableAnchors()
     {
         availableAnchors.Clear();

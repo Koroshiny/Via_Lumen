@@ -1,4 +1,4 @@
-using UnityEngine;
+﻿using UnityEngine;
 
 public class ThirdPersonCamera : MonoBehaviour
 {
@@ -7,10 +7,10 @@ public class ThirdPersonCamera : MonoBehaviour
     [Range(0.5f, 2f)]
     float mouseSense = 1;
     [SerializeField]
-    [Range(-30, 0)]
+    [Range(-60, 0)]
     int lookUp = -15;
     [SerializeField]
-    [Range(5, 35)]
+    [Range(5, 65)]
     int lookDown = 20;
 
     private void Start()
