@@ -1,4 +1,4 @@
-using System.Collections;
+﻿using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 
@@ -27,14 +27,14 @@ public class PlayerLightTeleport : MonoBehaviour
     [SerializeField] float flightDuration = 1.2f;
     [SerializeField] float flightArcHeight = 2f;
 
-    TeleportState state;
-    LightAnchor currentAnchor;
-    LightAnchor teleportTarget;
+    [Header("State")]
+    [SerializeField] TeleportState state;
+    [SerializeField] LightAnchor currentAnchor;
+    [SerializeField] List<LightAnchor> availableAnchors = new();
+    [SerializeField] int selectedIndex;
 
-    List<LightAnchor> availableAnchors = new();
     LightAnchor[] allAnchors;
-
-    int selectedIndex;
+    LightAnchor teleportTarget;
     bool teleportLock;
 
     void Awake()
@@ -108,10 +108,9 @@ public class PlayerLightTeleport : MonoBehaviour
         thirdPersonCamera.gameObject.SetActive(false);
         firstPersonTeleportCamera.gameObject.SetActive(true);
 
-        firstPersonTeleportCamera.transform.SetPositionAndRotation(
-            currentAnchor.ViewPoint.position,
-            currentAnchor.ViewPoint.rotation
-        );
+        Transform cam = firstPersonTeleportCamera.transform;
+        cam.position = currentAnchor.ViewPoint.position;
+        cam.rotation = currentAnchor.ViewPoint.rotation;
 
         CollectAvailableAnchors();
         SelectInitialAnchor();
@@ -192,6 +191,9 @@ public class PlayerLightTeleport : MonoBehaviour
 
     void ClearSelectionVFX()
     {
+        if (state == TeleportState.Selecting)
+            return;
+
         foreach (var la in allAnchors)
             la.SetSelected(false);
     }
@@ -207,28 +209,41 @@ public class PlayerLightTeleport : MonoBehaviour
 
         teleportTarget = availableAnchors[selectedIndex];
 
+        // 🔑 ВАЖНО:
+        // телепортируем игрока СРАЗУ, пока визуал выключен
+        if (teleportTarget != null && teleportTarget.ExitPoint != null)
+        {
+            transform.SetPositionAndRotation(
+                teleportTarget.ExitPoint.position,
+                teleportTarget.ExitPoint.rotation
+            );
+        }
+
         ClearSelectionVFX();
-        StartCoroutine(TeleportFlightCoroutine());
+        StartCoroutine(TeleportFlightCoroutine(
+            currentAnchor.ViewPoint,
+            teleportTarget
+        ));
     }
 
-    IEnumerator TeleportFlightCoroutine()
+    IEnumerator TeleportFlightCoroutine(Transform fromView, LightAnchor target)
     {
         Transform cam = firstPersonTeleportCamera.transform;
 
-        Vector3 startPos = cam.position;
-        Vector3 endPos = teleportTarget.ViewPoint.position;
+        Vector3 startPos = fromView.position;
+        Vector3 endPos = target.ViewPoint.position;
 
-        float t = 0f;
+        float time = 0f;
 
-        while (t < 1f)
+        while (time < 1f)
         {
-            t += Time.deltaTime / flightDuration;
+            time += Time.deltaTime / flightDuration;
 
-            Vector3 pos = Vector3.Lerp(startPos, endPos, t);
-            pos.y += Mathf.Sin(t * Mathf.PI) * flightArcHeight;
+            Vector3 mid = Vector3.Lerp(startPos, endPos, time);
+            mid.y += Mathf.Sin(time * Mathf.PI) * flightArcHeight;
 
-            cam.position = pos;
-            cam.rotation = Quaternion.LookRotation((endPos - pos).normalized);
+            cam.position = mid;
+            cam.rotation = Quaternion.LookRotation((endPos - mid).normalized);
 
             yield return null;
         }
@@ -240,14 +255,6 @@ public class PlayerLightTeleport : MonoBehaviour
     {
         state = TeleportState.Normal;
 
-        if (teleportTarget != null && teleportTarget.ExitPoint != null)
-        {
-            transform.SetPositionAndRotation(
-                teleportTarget.ExitPoint.position,
-                teleportTarget.ExitPoint.rotation
-            );
-        }
-
         teleportTarget = null;
 
         playerVisualRoot.SetActive(true);
@@ -257,6 +264,12 @@ public class PlayerLightTeleport : MonoBehaviour
         firstPersonTeleportCamera.gameObject.SetActive(false);
 
         availableAnchors.Clear();
+
+        Invoke(nameof(ClearTeleportLock), 0.1f);
+    }
+
+    void ClearTeleportLock()
+    {
         teleportLock = false;
     }
 }
