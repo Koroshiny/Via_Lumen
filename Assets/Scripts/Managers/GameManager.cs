@@ -1,4 +1,4 @@
-using UnityEngine;
+﻿using UnityEngine;
 using UnityEngine.SceneManagement;
 
 public class GameManager : MonoBehaviour
@@ -18,7 +18,7 @@ public class GameManager : MonoBehaviour
         }
 
         Instance = this;
-        DontDestroyOnLoad(gameObject);
+
     }
 
     void Update()
@@ -40,6 +40,8 @@ public class GameManager : MonoBehaviour
         Cursor.visible = isPaused;
     }
 
+    // ---------- UI BUTTONS ----------
+
     public void Resume()
     {
         if (isPaused)
@@ -55,7 +57,7 @@ public class GameManager : MonoBehaviour
     public void ExitToMenu()
     {
         Time.timeScale = 1f;
-        SceneManager.LoadScene("MainMenu");
+        SceneManager.LoadScene("Menu");
     }
 
     public void QuitGame()

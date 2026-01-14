@@ -5,6 +5,7 @@ TagManager:
   serializedVersion: 2
   tags:
   - LightAnchor
+  - PauseMenu
   layers:
   - Default
   - TransparentFX

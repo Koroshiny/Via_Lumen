@@ -1,15 +1,21 @@
+п»їusing System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 
 public class PlayerLightTeleport : MonoBehaviour
 {
-    enum TeleportState { Normal, Selecting }
+    enum TeleportState
+    {
+        Normal,
+        Selecting,
+        Teleporting
+    }
 
     [Header("References")]
-    [SerializeField] Camera thirdPersonCamera;            // основная камера 3 лица
-    [SerializeField] Camera firstPersonTeleportCamera;    // камера FPS для телепорта
-    [SerializeField] GameObject playerVisualRoot;         // визуальные меши
-    [SerializeField] PlayerController playerController;   // управление персонажем
+    [SerializeField] Camera thirdPersonCamera;
+    [SerializeField] Camera firstPersonTeleportCamera;
+    [SerializeField] GameObject playerVisualRoot;
+    [SerializeField] PlayerController playerController;
 
     [Header("Input")]
     [SerializeField] KeyCode teleportModeKey = KeyCode.Q;
@@ -17,38 +23,53 @@ public class PlayerLightTeleport : MonoBehaviour
     [SerializeField] KeyCode nextTargetKey = KeyCode.RightArrow;
     [SerializeField] KeyCode prevTargetKey = KeyCode.LeftArrow;
 
-    [Header("Debug / State")]
+    [Header("Teleport Flight")]
+    [SerializeField] float flightDuration = 1.2f;
+    [SerializeField] float flightArcHeight = 2f;
+
+    [Header("State")]
     [SerializeField] TeleportState state;
     [SerializeField] LightAnchor currentAnchor;
-    [SerializeField] List<LightAnchor> availableAnchors = new List<LightAnchor>();
+    [SerializeField] List<LightAnchor> availableAnchors = new();
     [SerializeField] int selectedIndex;
+
+    LightAnchor[] allAnchors;
+    LightAnchor teleportTarget;
+    bool teleportLock;
+
+    void Awake()
+    {
+        allAnchors = FindObjectsOfType<LightAnchor>();
+    }
 
     void Update()
     {
+        if (state == TeleportState.Teleporting)
+            return;
+
         UpdateCurrentAnchor();
 
-        // Зажигание фонарей на E
         if (Input.GetKeyDown(KeyCode.E))
             TryLightAnchor();
 
-        // Вход/выход в режим телепорта
-        if (Input.GetKeyDown(teleportModeKey))
+        if (Input.GetKeyDown(teleportModeKey) && !teleportLock)
         {
             if (state == TeleportState.Normal)
                 EnterTeleportMode();
-            else
-                ExitTeleportModeWithoutTeleport();
+            else if (state == TeleportState.Selecting)
+                ExitTeleportModeCancel();
         }
 
-        // Обработка выбора цели и телепорта
         if (state == TeleportState.Selecting)
             HandleSelectionInput();
     }
 
+    // ----------------------------------------------------
+
     void UpdateCurrentAnchor()
     {
         currentAnchor = null;
-        foreach (var la in FindObjectsOfType<LightAnchor>())
+        foreach (var la in allAnchors)
         {
             if (la.IsLit && la.PlayerInside)
             {
@@ -60,7 +81,7 @@ public class PlayerLightTeleport : MonoBehaviour
 
     void TryLightAnchor()
     {
-        foreach (var la in FindObjectsOfType<LightAnchor>())
+        foreach (var la in allAnchors)
         {
             if (la.PlayerInside && !la.IsLit)
             {
@@ -70,179 +91,185 @@ public class PlayerLightTeleport : MonoBehaviour
         }
     }
 
-    // -------------------------
-    // Вход в режим телепорта
-    // -------------------------
+    // ----------------------------------------------------
+    // ENTER / EXIT
+    // ----------------------------------------------------
+
     void EnterTeleportMode()
     {
-        if (playerController == null || playerVisualRoot == null || currentAnchor == null) return;
+        if (currentAnchor == null)
+            return;
 
         state = TeleportState.Selecting;
 
-        // Отключаем движение и визуальные меши
         playerController.SetMovementEnabled(false);
         playerVisualRoot.SetActive(false);
 
-        // Отключаем 3rd person камеру
-        if (thirdPersonCamera != null)
-        {
-            thirdPersonCamera.enabled = false;
-            thirdPersonCamera.gameObject.SetActive(false);
-        }
+        thirdPersonCamera.gameObject.SetActive(false);
+        firstPersonTeleportCamera.gameObject.SetActive(true);
 
-        // Включаем FPS камеру и перемещаем только её на AnchorViewPoint
-        if (firstPersonTeleportCamera != null && currentAnchor.ViewPoint != null)
-        {
-            firstPersonTeleportCamera.gameObject.SetActive(true);
-            firstPersonTeleportCamera.enabled = true;
+        Transform cam = firstPersonTeleportCamera.transform;
+        cam.position = currentAnchor.ViewPoint.position;
+        cam.rotation = currentAnchor.ViewPoint.rotation;
 
-            firstPersonTeleportCamera.transform.position = currentAnchor.ViewPoint.position;
-            firstPersonTeleportCamera.transform.rotation = currentAnchor.ViewPoint.rotation;
-        }
-
-        // Собираем цели через SelectionZone
         CollectAvailableAnchors();
         SelectInitialAnchor();
     }
 
-    // -------------------------
-    // Выход без телепорта (Q)
-    // -------------------------
-    void ExitTeleportModeWithoutTeleport()
+    void ExitTeleportModeCancel()
     {
         state = TeleportState.Normal;
 
-        // Перемещаем игрока на TeleportPoint текущего фонаря
-        if (currentAnchor != null && currentAnchor.GetTeleportPoint() != null)
-        {
-            transform.position = currentAnchor.GetTeleportPoint().position;
-            transform.rotation = currentAnchor.GetTeleportPoint().rotation;
-        }
-
-        // Включаем визуальные элементы и движение
         playerVisualRoot.SetActive(true);
         playerController.SetMovementEnabled(true);
 
-        // Включаем 3rd person камеру
-        if (thirdPersonCamera != null)
-        {
-            thirdPersonCamera.gameObject.SetActive(true);
-            thirdPersonCamera.enabled = true;
-        }
-
-        // Выключаем FPS камеру
-        if (firstPersonTeleportCamera != null)
-        {
-            firstPersonTeleportCamera.enabled = false;
-            firstPersonTeleportCamera.gameObject.SetActive(false);
-        }
+        thirdPersonCamera.gameObject.SetActive(true);
+        firstPersonTeleportCamera.gameObject.SetActive(false);
 
         ClearSelectionVFX();
         availableAnchors.Clear();
     }
 
-    // -------------------------
-    // Выход с телепортом (T)
-    // -------------------------
-    void ExitTeleportMode()
-    {
-        state = TeleportState.Normal;
+    // ----------------------------------------------------
+    // SELECTION
+    // ----------------------------------------------------
 
-        // Телепортируем игрока на ExitPoint выбранного фонаря
-        if (availableAnchors.Count > 0 && selectedIndex >= 0 && selectedIndex < availableAnchors.Count)
-        {
-            var target = availableAnchors[selectedIndex];
-            if (target != null && target.ExitPoint != null)
-            {
-                transform.position = target.ExitPoint.position;
-                transform.rotation = target.ExitPoint.rotation;
-            }
-        }
-        else if (currentAnchor != null && currentAnchor.GetTeleportPoint() != null)
-        {
-            // Если целей нет, возвращаем игрока на ExitPoint текущего фонаря
-            transform.position = currentAnchor.GetTeleportPoint().position;
-            transform.rotation = currentAnchor.GetTeleportPoint().rotation;
-        }
-
-        // Включаем визуальные элементы и движение
-        playerVisualRoot.SetActive(true);
-        playerController.SetMovementEnabled(true);
-
-        // Включаем 3rd person камеру
-        if (thirdPersonCamera != null)
-        {
-            thirdPersonCamera.gameObject.SetActive(true);
-            thirdPersonCamera.enabled = true;
-        }
-
-        // Выключаем FPS камеру
-        if (firstPersonTeleportCamera != null)
-        {
-            firstPersonTeleportCamera.enabled = false;
-            firstPersonTeleportCamera.gameObject.SetActive(false);
-        }
-
-        ClearSelectionVFX();
-        availableAnchors.Clear();
-    }
-
-    // -------------------------
-    // Сбор доступных целей
-    // -------------------------
     void CollectAvailableAnchors()
     {
         availableAnchors.Clear();
-        if (currentAnchor == null) return;
+        if (currentAnchor == null)
+            return;
 
-        Collider selectionZone = currentAnchor.GetSelectionZone();
-        if (selectionZone == null) return;
+        Collider zone = currentAnchor.GetSelectionZone();
+        if (zone == null)
+            return;
 
-        foreach (var la in FindObjectsOfType<LightAnchor>())
+        foreach (var la in allAnchors)
         {
-            if (!la.IsLit || la == currentAnchor) continue;
+            if (!la.IsLit || la == currentAnchor)
+                continue;
 
-            Collider targetCollider = la.GetComponent<Collider>();
-            if (targetCollider != null && selectionZone.bounds.Intersects(targetCollider.bounds))
+            Collider col = la.GetComponent<Collider>();
+            if (col != null && zone.bounds.Intersects(col.bounds))
                 availableAnchors.Add(la);
         }
     }
 
     void SelectInitialAnchor()
     {
+        if (availableAnchors.Count == 0)
+            return;
+
         selectedIndex = 0;
         UpdateSelection();
     }
 
     void HandleSelectionInput()
     {
-        if (availableAnchors.Count == 0) return;
+        if (availableAnchors.Count == 0)
+            return;
 
         if (Input.GetKeyDown(nextTargetKey))
-        {
             selectedIndex = (selectedIndex + 1) % availableAnchors.Count;
-            UpdateSelection();
-        }
+
         if (Input.GetKeyDown(prevTargetKey))
-        {
             selectedIndex = (selectedIndex - 1 + availableAnchors.Count) % availableAnchors.Count;
-            UpdateSelection();
-        }
+
+        UpdateSelection();
 
         if (Input.GetKeyDown(teleportConfirmKey))
-            ExitTeleportMode();
+            StartTeleport();
     }
 
     void UpdateSelection()
     {
         ClearSelectionVFX();
-        if (availableAnchors.Count > 0)
-            availableAnchors[selectedIndex].SetSelected(true);
+
+        selectedIndex = Mathf.Clamp(selectedIndex, 0, availableAnchors.Count - 1);
+        availableAnchors[selectedIndex].SetSelected(true);
     }
 
     void ClearSelectionVFX()
     {
-        foreach (var la in FindObjectsOfType<LightAnchor>())
+        if (state == TeleportState.Selecting)
+            return;
+
+        foreach (var la in allAnchors)
             la.SetSelected(false);
+    }
+
+    // ----------------------------------------------------
+    // TELEPORT
+    // ----------------------------------------------------
+
+    void StartTeleport()
+    {
+        teleportLock = true;
+        state = TeleportState.Teleporting;
+
+        teleportTarget = availableAnchors[selectedIndex];
+
+        // рџ”‘ Р’РђР–РќРћ:
+        // С‚РµР»РµРїРѕСЂС‚РёСЂСѓРµРј РёРіСЂРѕРєР° РЎР РђР—РЈ, РїРѕРєР° РІРёР·СѓР°Р» РІС‹РєР»СЋС‡РµРЅ
+        if (teleportTarget != null && teleportTarget.ExitPoint != null)
+        {
+            transform.SetPositionAndRotation(
+                teleportTarget.ExitPoint.position,
+                teleportTarget.ExitPoint.rotation
+            );
+        }
+
+        ClearSelectionVFX();
+        StartCoroutine(TeleportFlightCoroutine(
+            currentAnchor.ViewPoint,
+            teleportTarget
+        ));
+    }
+
+    IEnumerator TeleportFlightCoroutine(Transform fromView, LightAnchor target)
+    {
+        Transform cam = firstPersonTeleportCamera.transform;
+
+        Vector3 startPos = fromView.position;
+        Vector3 endPos = target.ViewPoint.position;
+
+        float time = 0f;
+
+        while (time < 1f)
+        {
+            time += Time.deltaTime / flightDuration;
+
+            Vector3 mid = Vector3.Lerp(startPos, endPos, time);
+            mid.y += Mathf.Sin(time * Mathf.PI) * flightArcHeight;
+
+            cam.position = mid;
+            cam.rotation = Quaternion.LookRotation((endPos - mid).normalized);
+
+            yield return null;
+        }
+
+        CompleteTeleport();
+    }
+
+    void CompleteTeleport()
+    {
+        state = TeleportState.Normal;
+
+        teleportTarget = null;
+
+        playerVisualRoot.SetActive(true);
+        playerController.SetMovementEnabled(true);
+
+        thirdPersonCamera.gameObject.SetActive(true);
+        firstPersonTeleportCamera.gameObject.SetActive(false);
+
+        availableAnchors.Clear();
+
+        Invoke(nameof(ClearTeleportLock), 0.1f);
+    }
+
+    void ClearTeleportLock()
+    {
+        teleportLock = false;
     }
 }

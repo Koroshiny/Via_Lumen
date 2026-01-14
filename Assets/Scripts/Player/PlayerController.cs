@@ -9,28 +9,24 @@ public class PlayerController : MonoBehaviour
 
     Rigidbody rb;
     Vector3 direction;
-    bool isGrounded = true;
+    bool isGrounded;
     bool movementEnabled = true;
 
     [Header("Slope")]
     [SerializeField] float maxSlopeAngle = 35f;
 
     [Header("Extra Gravity / Air Control")]
-    [SerializeField, Tooltip("Дополнительная гравитация в воздухе для веса персонажа")]
-    float extraGravity = 20f;
-
-    [SerializeField, Tooltip("Множитель управления в воздухе")]
-    float airControlMultiplier = 0.4f;
+    [SerializeField] float extraGravity = 20f;
+    [SerializeField] float airControlMultiplier = 0.4f;
 
     [Header("Sliding on steep slopes")]
-    [SerializeField, Tooltip("Сила сползания по склонам круче maxSlopeAngle")]
-    float slideDownForce = 5f;
+    [SerializeField] float slideDownForce = 5f;
 
     [Header("Acceleration / Deceleration")]
-    [SerializeField] float acceleration = 20f;  // скорость нарастания
-    [SerializeField] float deceleration = 25f;  // скорость торможения
+    [SerializeField] float acceleration = 20f;
+    [SerializeField] float deceleration = 25f;
 
-    float currentSpeed = 0f; // текущая горизонтальная скорость
+    float currentSpeed;
 
     void Awake()
     {
@@ -53,36 +49,23 @@ public class PlayerController : MonoBehaviour
         if (!movementEnabled)
             return;
 
-        // Extra gravity в воздухе
         if (!isGrounded)
-        {
             rb.AddForce(Vector3.down * extraGravity, ForceMode.Acceleration);
-        }
 
-        // Сползание на крутых склонах
         ApplySlopeSlide();
 
-        // -------------------------
-        // Acceleration / Deceleration
-        // -------------------------
         float targetSpeed = direction.magnitude * movementSpeed;
 
         if (currentSpeed < targetSpeed)
             currentSpeed = Mathf.MoveTowards(currentSpeed, targetSpeed, acceleration * Time.fixedDeltaTime);
-        else if (currentSpeed > targetSpeed)
+        else
             currentSpeed = Mathf.MoveTowards(currentSpeed, targetSpeed, deceleration * Time.fixedDeltaTime);
 
-        // движение
         if (CanMoveOnSlope(direction))
         {
             float control = isGrounded ? 1f : airControlMultiplier;
-            rb.MovePosition(transform.position + direction.normalized * currentSpeed * control * Time.fixedDeltaTime);
+            rb.MovePosition(rb.position + direction.normalized * currentSpeed * control * Time.fixedDeltaTime);
         }
-    }
-
-    void OnCollisionEnter(Collision collision)
-    {
-        isGrounded = true;
     }
 
     void HandleMovement()
@@ -94,36 +77,27 @@ public class PlayerController : MonoBehaviour
 
         if (Input.GetKeyDown(KeyCode.Space) && isGrounded)
         {
-            // Гасим горизонтальную скорость для более вертикального прыжка
             rb.velocity = new Vector3(rb.velocity.x * 0.6f, 0f, rb.velocity.z * 0.6f);
-
             rb.AddForce(Vector3.up * jumpForce, ForceMode.Impulse);
             isGrounded = false;
-
-            // currentSpeed сохраняется и после приземления будет нарастать с текущего значения
         }
     }
 
-    // -------------------------
-    // External control
-    // -------------------------
     public void SetMovementEnabled(bool enabled)
     {
         movementEnabled = enabled;
+
+        if (!enabled)
+            rb.velocity = Vector3.zero;
     }
 
-    // -------------------------
-    // Can move on slope
-    // -------------------------
     bool CanMoveOnSlope(Vector3 moveDir)
     {
         if (moveDir == Vector3.zero)
             return true;
 
-        Ray ray = new Ray(transform.position + Vector3.up * 0.1f, moveDir);
-        if (Physics.Raycast(ray, out RaycastHit hit, 1f))
+        if (Physics.Raycast(transform.position + Vector3.up * 0.1f, moveDir, out RaycastHit hit, 1f))
         {
-            // Игнорируем триггерные коллайдеры (фонари и другие)
             if (hit.collider.isTrigger)
                 return true;
 
@@ -134,20 +108,36 @@ public class PlayerController : MonoBehaviour
         return true;
     }
 
-    // -------------------------
-    // Sliding on steep slopes
-    // -------------------------
     void ApplySlopeSlide()
     {
-        if (Physics.Raycast(transform.position + Vector3.up * 0.1f, Vector3.down, out RaycastHit hit, 1f))
+        if (!isGrounded)
+            return;
+
+        if (Physics.Raycast(transform.position + Vector3.up * 0.1f, Vector3.down, out RaycastHit hit, 1.2f))
         {
             float slopeAngle = Vector3.Angle(hit.normal, Vector3.up);
-
-            if (slopeAngle > maxSlopeAngle && isGrounded)
+            if (slopeAngle > maxSlopeAngle)
             {
                 Vector3 slideDir = Vector3.ProjectOnPlane(Vector3.down, hit.normal).normalized;
                 rb.AddForce(slideDir * slideDownForce, ForceMode.Acceleration);
             }
         }
+    }
+
+    void OnCollisionStay(Collision collision)
+    {
+        foreach (var contact in collision.contacts)
+        {
+            if (Vector3.Angle(contact.normal, Vector3.up) <= maxSlopeAngle)
+            {
+                isGrounded = true;
+                return;
+            }
+        }
+    }
+
+    void OnCollisionExit(Collision collision)
+    {
+        isGrounded = false;
     }
 }
