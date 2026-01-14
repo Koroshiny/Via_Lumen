@@ -689,13 +689,6 @@ MonoBehaviour:
   player: {fileID: 1657428878}
   levelStartPoint: {fileID: 0}
   levelEndPoint: {fileID: 0}
-  teleportToStartKey: 282
-  teleportToEndKey: 283
-  lightAllKey: 284
-  extinguishAllKey: 285
-  restartLevelKey: 286
-  nextLevelKey: 287
-  previousLevelKey: 288
 --- !u!4 &545260806
 Transform:
   m_ObjectHideFlags: 0
@@ -1294,7 +1287,7 @@ PrefabInstance:
     - target: {fileID: 7051878256915212353, guid: 24fe73917b1304a479967987e0c818bf,
         type: 3}
       propertyPath: isLit
-      value: 0
+      value: 1
       objectReference: {fileID: 0}
     - target: {fileID: 7285499023469174787, guid: 24fe73917b1304a479967987e0c818bf,
         type: 3}
@@ -1845,6 +1838,12 @@ Transform:
     type: 3}
   m_PrefabInstance: {fileID: 3689772630669118929}
   m_PrefabAsset: {fileID: 0}
+--- !u!54 &1657428884 stripped
+Rigidbody:
+  m_CorrespondingSourceObject: {fileID: 3065901883436288050, guid: 9aa389e528a34784c848e70b1e15a6ed,
+    type: 3}
+  m_PrefabInstance: {fileID: 3689772630669118929}
+  m_PrefabAsset: {fileID: 0}
 --- !u!1001 &1770604065
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -2189,6 +2188,18 @@ Camera:
     type: 3}
   m_PrefabInstance: {fileID: 3689772630669118929}
   m_PrefabAsset: {fileID: 0}
+--- !u!114 &1919380563 stripped
+MonoBehaviour:
+  m_CorrespondingSourceObject: {fileID: 7191116751052410557, guid: 9aa389e528a34784c848e70b1e15a6ed,
+    type: 3}
+  m_PrefabInstance: {fileID: 3689772630669118929}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: f53114bba6f07a44b870827e6f3a6b1b, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
 --- !u!1001 &2071373209
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -2818,17 +2829,17 @@ PrefabInstance:
     - target: {fileID: 3741479211447988471, guid: 9aa389e528a34784c848e70b1e15a6ed,
         type: 3}
       propertyPath: m_LocalPosition.x
-      value: 88.19
+      value: 279.1
       objectReference: {fileID: 0}
     - target: {fileID: 3741479211447988471, guid: 9aa389e528a34784c848e70b1e15a6ed,
         type: 3}
       propertyPath: m_LocalPosition.y
-      value: 100.16
+      value: 101.04928
       objectReference: {fileID: 0}
     - target: {fileID: 3741479211447988471, guid: 9aa389e528a34784c848e70b1e15a6ed,
         type: 3}
       propertyPath: m_LocalPosition.z
-      value: 109.98
+      value: 148.72
       objectReference: {fileID: 0}
     - target: {fileID: 3741479211447988471, guid: 9aa389e528a34784c848e70b1e15a6ed,
         type: 3}
@@ -2898,7 +2909,7 @@ PrefabInstance:
     - target: {fileID: 5012674951550009309, guid: 9aa389e528a34784c848e70b1e15a6ed,
         type: 3}
       propertyPath: movementSpeed
-      value: 15
+      value: 30
       objectReference: {fileID: 0}
     - target: {fileID: 5012674951550009309, guid: 9aa389e528a34784c848e70b1e15a6ed,
         type: 3}
@@ -2922,9 +2933,19 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 9206496321944208197, guid: 9aa389e528a34784c848e70b1e15a6ed,
         type: 3}
+      propertyPath: playerRigidbody
+      value: 
+      objectReference: {fileID: 1657428884}
+    - target: {fileID: 9206496321944208197, guid: 9aa389e528a34784c848e70b1e15a6ed,
+        type: 3}
       propertyPath: firstPersonCamera
       value: 
       objectReference: {fileID: 1919380561}
+    - target: {fileID: 9206496321944208197, guid: 9aa389e528a34784c848e70b1e15a6ed,
+        type: 3}
+      propertyPath: fpsCameraController
+      value: 
+      objectReference: {fileID: 1919380563}
     m_RemovedComponents: []
     m_RemovedGameObjects: []
     m_AddedGameObjects: []
