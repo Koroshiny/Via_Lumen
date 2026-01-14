@@ -1,9 +1,15 @@
+using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 
 public class PlayerLightTeleport : MonoBehaviour
 {
-    enum TeleportState { Normal, Selecting }
+    enum TeleportState
+    {
+        Normal,
+        Selecting,
+        Teleporting
+    }
 
     [Header("References")]
     [SerializeField] Camera thirdPersonCamera;
@@ -17,16 +23,19 @@ public class PlayerLightTeleport : MonoBehaviour
     [SerializeField] KeyCode nextTargetKey = KeyCode.RightArrow;
     [SerializeField] KeyCode prevTargetKey = KeyCode.LeftArrow;
 
-    [Header("Debug / State")]
-    [SerializeField] TeleportState state;
-    [SerializeField] LightAnchor currentAnchor;
-    [SerializeField] List<LightAnchor> availableAnchors = new();
-    [SerializeField] int selectedIndex;
+    [Header("Teleport Flight")]
+    [SerializeField] float flightDuration = 1.2f;
+    [SerializeField] float flightArcHeight = 2f;
 
+    TeleportState state;
+    LightAnchor currentAnchor;
+    LightAnchor teleportTarget;
+
+    List<LightAnchor> availableAnchors = new();
     LightAnchor[] allAnchors;
 
-    bool teleportJustFinished;
-
+    int selectedIndex;
+    bool teleportLock;
 
     void Awake()
     {
@@ -35,23 +44,27 @@ public class PlayerLightTeleport : MonoBehaviour
 
     void Update()
     {
+        if (state == TeleportState.Teleporting)
+            return;
+
         UpdateCurrentAnchor();
 
         if (Input.GetKeyDown(KeyCode.E))
             TryLightAnchor();
 
-        if (Input.GetKeyDown(teleportModeKey) && !teleportJustFinished)
+        if (Input.GetKeyDown(teleportModeKey) && !teleportLock)
         {
             if (state == TeleportState.Normal)
                 EnterTeleportMode();
-            else
-                ExitTeleportModeWithoutTeleport();
+            else if (state == TeleportState.Selecting)
+                ExitTeleportModeCancel();
         }
-
 
         if (state == TeleportState.Selecting)
             HandleSelectionInput();
     }
+
+    // ----------------------------------------------------
 
     void UpdateCurrentAnchor()
     {
@@ -78,17 +91,23 @@ public class PlayerLightTeleport : MonoBehaviour
         }
     }
 
+    // ----------------------------------------------------
+    // ENTER / EXIT
+    // ----------------------------------------------------
+
     void EnterTeleportMode()
     {
-        if (currentAnchor == null) return;
+        if (currentAnchor == null)
+            return;
 
         state = TeleportState.Selecting;
+
         playerController.SetMovementEnabled(false);
         playerVisualRoot.SetActive(false);
 
         thirdPersonCamera.gameObject.SetActive(false);
-
         firstPersonTeleportCamera.gameObject.SetActive(true);
+
         firstPersonTeleportCamera.transform.SetPositionAndRotation(
             currentAnchor.ViewPoint.position,
             currentAnchor.ViewPoint.rotation
@@ -98,26 +117,9 @@ public class PlayerLightTeleport : MonoBehaviour
         SelectInitialAnchor();
     }
 
-    void ExitTeleportModeWithoutTeleport()
-    {
-        ExitTeleportInternal(currentAnchor?.GetTeleportPoint());
-    }
-
-    void ExitTeleportMode()
-    {
-        Transform target = availableAnchors.Count > 0
-            ? availableAnchors[selectedIndex].ExitPoint
-            : currentAnchor?.GetTeleportPoint();
-
-        ExitTeleportInternal(target);
-    }
-
-    void ExitTeleportInternal(Transform target)
+    void ExitTeleportModeCancel()
     {
         state = TeleportState.Normal;
-
-        if (target != null)
-            transform.SetPositionAndRotation(target.position, target.rotation);
 
         playerVisualRoot.SetActive(true);
         playerController.SetMovementEnabled(true);
@@ -127,25 +129,29 @@ public class PlayerLightTeleport : MonoBehaviour
 
         ClearSelectionVFX();
         availableAnchors.Clear();
-
-        teleportJustFinished = true;
-        Invoke(nameof(ClearTeleportLock), 0.1f);
-
     }
+
+    // ----------------------------------------------------
+    // SELECTION
+    // ----------------------------------------------------
 
     void CollectAvailableAnchors()
     {
         availableAnchors.Clear();
-        if (currentAnchor == null) return;
+        if (currentAnchor == null)
+            return;
 
         Collider zone = currentAnchor.GetSelectionZone();
-        if (zone == null) return;
+        if (zone == null)
+            return;
 
         foreach (var la in allAnchors)
         {
-            if (!la.IsLit || la == currentAnchor) continue;
+            if (!la.IsLit || la == currentAnchor)
+                continue;
 
-            if (zone.bounds.Intersects(la.GetComponent<Collider>().bounds))
+            Collider col = la.GetComponent<Collider>();
+            if (col != null && zone.bounds.Intersects(col.bounds))
                 availableAnchors.Add(la);
         }
     }
@@ -159,10 +165,10 @@ public class PlayerLightTeleport : MonoBehaviour
         UpdateSelection();
     }
 
-
     void HandleSelectionInput()
     {
-        if (availableAnchors.Count == 0) return;
+        if (availableAnchors.Count == 0)
+            return;
 
         if (Input.GetKeyDown(nextTargetKey))
             selectedIndex = (selectedIndex + 1) % availableAnchors.Count;
@@ -173,33 +179,84 @@ public class PlayerLightTeleport : MonoBehaviour
         UpdateSelection();
 
         if (Input.GetKeyDown(teleportConfirmKey))
-            ExitTeleportMode();
+            StartTeleport();
     }
 
     void UpdateSelection()
     {
         ClearSelectionVFX();
 
-        if (availableAnchors.Count == 0)
-            return;
-
         selectedIndex = Mathf.Clamp(selectedIndex, 0, availableAnchors.Count - 1);
         availableAnchors[selectedIndex].SetSelected(true);
     }
 
-
     void ClearSelectionVFX()
     {
-        if (state == TeleportState.Selecting)
-            return;
-
         foreach (var la in allAnchors)
             la.SetSelected(false);
     }
 
+    // ----------------------------------------------------
+    // TELEPORT
+    // ----------------------------------------------------
 
-    void ClearTeleportLock()
+    void StartTeleport()
     {
-        teleportJustFinished = false;
+        teleportLock = true;
+        state = TeleportState.Teleporting;
+
+        teleportTarget = availableAnchors[selectedIndex];
+
+        ClearSelectionVFX();
+        StartCoroutine(TeleportFlightCoroutine());
+    }
+
+    IEnumerator TeleportFlightCoroutine()
+    {
+        Transform cam = firstPersonTeleportCamera.transform;
+
+        Vector3 startPos = cam.position;
+        Vector3 endPos = teleportTarget.ViewPoint.position;
+
+        float t = 0f;
+
+        while (t < 1f)
+        {
+            t += Time.deltaTime / flightDuration;
+
+            Vector3 pos = Vector3.Lerp(startPos, endPos, t);
+            pos.y += Mathf.Sin(t * Mathf.PI) * flightArcHeight;
+
+            cam.position = pos;
+            cam.rotation = Quaternion.LookRotation((endPos - pos).normalized);
+
+            yield return null;
+        }
+
+        CompleteTeleport();
+    }
+
+    void CompleteTeleport()
+    {
+        state = TeleportState.Normal;
+
+        if (teleportTarget != null && teleportTarget.ExitPoint != null)
+        {
+            transform.SetPositionAndRotation(
+                teleportTarget.ExitPoint.position,
+                teleportTarget.ExitPoint.rotation
+            );
+        }
+
+        teleportTarget = null;
+
+        playerVisualRoot.SetActive(true);
+        playerController.SetMovementEnabled(true);
+
+        thirdPersonCamera.gameObject.SetActive(true);
+        firstPersonTeleportCamera.gameObject.SetActive(false);
+
+        availableAnchors.Clear();
+        teleportLock = false;
     }
 }
