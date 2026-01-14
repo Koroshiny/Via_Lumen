@@ -3,7 +3,7 @@ using UnityEngine;
 public class FirstPersonCamera : MonoBehaviour
 {
     [SerializeField] float mouseSensitivity = 2f;
-    private float xRotation = 0f;
+    float xRotation;
 
     void Start()
     {
@@ -12,6 +12,9 @@ public class FirstPersonCamera : MonoBehaviour
 
     void Update()
     {
+        if (Time.timeScale == 0f)
+            return;
+
         float mouseX = Input.GetAxis("Mouse X") * mouseSensitivity;
         float mouseY = Input.GetAxis("Mouse Y") * mouseSensitivity;
 

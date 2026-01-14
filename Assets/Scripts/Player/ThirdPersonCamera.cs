@@ -3,22 +3,29 @@
 public class ThirdPersonCamera : MonoBehaviour
 {
     [SerializeField] GameObject player;
+
     [SerializeField]
     [Range(0.5f, 2f)]
-    float mouseSense = 1;
+    float mouseSense = 1f;
+
     [SerializeField]
     [Range(-60, 0)]
     int lookUp = -15;
+
     [SerializeField]
     [Range(5, 65)]
     int lookDown = 20;
 
-    private void Start()
+    void Start()
     {
         Cursor.lockState = CursorLockMode.Locked;
     }
+
     void Update()
     {
+        if (Time.timeScale == 0f)
+            return;
+
         float rotateX = Input.GetAxis("Mouse X") * mouseSense;
         float rotateY = Input.GetAxis("Mouse Y") * mouseSense;
 
@@ -26,13 +33,21 @@ public class ThirdPersonCamera : MonoBehaviour
         Vector3 rotPlayer = player.transform.rotation.eulerAngles;
 
         rotCamera.x = (rotCamera.x > 180) ? rotCamera.x - 360 : rotCamera.x;
-        rotCamera.x = Mathf.Clamp(rotCamera.x, lookUp, lookDown);
         rotCamera.x -= rotateY;
+        rotCamera.x = Mathf.Clamp(rotCamera.x, lookUp, lookDown);
 
         rotCamera.z = 0;
         rotPlayer.y += rotateX;
 
         transform.rotation = Quaternion.Euler(rotCamera);
         player.transform.rotation = Quaternion.Euler(rotPlayer);
+    }
+
+    // --- UI ACCESS ---
+    public float MouseSensitivity => mouseSense;
+
+    public void SetMouseSensitivity(float value)
+    {
+        mouseSense = value;
     }
 }
