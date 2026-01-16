@@ -4,54 +4,50 @@ public class ThirdPersonCamera : MonoBehaviour
 {
     [SerializeField] GameObject player;
 
-    [Header("Mouse")]
     [SerializeField]
     [Range(0.5f, 2f)]
     float mouseSense = 1f;
 
-    [Header("Vertical Clamp")]
     [SerializeField]
-    [Range(-20, -10)]
+    [Range(-60, 0)]
     int lookUp = -15;
 
     [SerializeField]
-    [Range(15, 25)]
+    [Range(5, 65)]
     int lookDown = 20;
+
+    Rigidbody playerRb;
+
+    float rotationX;
 
     void Start()
     {
         Cursor.lockState = CursorLockMode.Locked;
+        Cursor.visible = false;
+
+        playerRb = player.GetComponent<Rigidbody>();
     }
 
     void Update()
     {
-        // ⛔ не двигаем камеру на паузе
         if (Time.timeScale == 0f)
             return;
 
-        float rotateX = Input.GetAxis("Mouse X") * mouseSense;
-        float rotateY = Input.GetAxis("Mouse Y") * mouseSense;
+        float mouseX = Input.GetAxis("Mouse X") * mouseSense;
+        float mouseY = Input.GetAxis("Mouse Y") * mouseSense;
 
-        Vector3 rotCamera = transform.rotation.eulerAngles;
-        Vector3 rotPlayer = player.transform.rotation.eulerAngles;
+        // --- вертикаль камеры ---
+        rotationX -= mouseY;
+        rotationX = Mathf.Clamp(rotationX, lookUp, lookDown);
 
-        // перевод угла в -180..180
-        rotCamera.x = (rotCamera.x > 180) ? rotCamera.x - 360 : rotCamera.x;
+        transform.localRotation = Quaternion.Euler(rotationX, 0f, 0f);
 
-        // вертикаль
-        rotCamera.x -= rotateY;
-        rotCamera.x = Mathf.Clamp(rotCamera.x, lookUp, lookDown);
-
-        // горизонталь
-        rotCamera.z = 0;
-        rotPlayer.y += rotateX;
-
-        transform.rotation = Quaternion.Euler(rotCamera);
-        player.transform.rotation = Quaternion.Euler(rotPlayer);
+        // --- горизонт игрока ---
+        Quaternion deltaRotation = Quaternion.Euler(0f, mouseX, 0f);
+        playerRb.MoveRotation(playerRb.rotation * deltaRotation);
     }
 
-    // -------- UI ACCESS --------
-
+    // --- UI ACCESS ---
     public float MouseSensitivity => mouseSense;
 
     public void SetMouseSensitivity(float value)
