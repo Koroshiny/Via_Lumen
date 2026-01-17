@@ -16,6 +16,7 @@ public class PlayerLightTeleport : MonoBehaviour
     [SerializeField] Camera firstPersonTeleportCamera;
     [SerializeField] GameObject playerVisualRoot;
     [SerializeField] PlayerController playerController;
+    [SerializeField] Rigidbody playerRb;
 
     [Header("Input")]
     [SerializeField] KeyCode teleportModeKey = KeyCode.Q;
@@ -40,6 +41,9 @@ public class PlayerLightTeleport : MonoBehaviour
     void Awake()
     {
         allAnchors = FindObjectsOfType<LightAnchor>();
+
+        if (playerRb == null)
+            playerRb = GetComponent<Rigidbody>();
     }
 
     void Update()
@@ -65,10 +69,13 @@ public class PlayerLightTeleport : MonoBehaviour
     }
 
     // ----------------------------------------------------
+    // CURRENT ANCHOR
+    // ----------------------------------------------------
 
     void UpdateCurrentAnchor()
     {
         currentAnchor = null;
+
         foreach (var la in allAnchors)
         {
             if (la.IsLit && la.PlayerInside)
@@ -92,7 +99,7 @@ public class PlayerLightTeleport : MonoBehaviour
     }
 
     // ----------------------------------------------------
-    // ENTER / EXIT
+    // ENTER / EXIT TELEPORT MODE
     // ----------------------------------------------------
 
     void EnterTeleportMode()
@@ -183,17 +190,24 @@ public class PlayerLightTeleport : MonoBehaviour
 
     void UpdateSelection()
     {
-        ClearSelectionVFX();
+        // Сначала сброс всех подсветок
+        foreach (var la in allAnchors)
+            la.SetSelected(false);
 
+        // Ограничиваем индекс
         selectedIndex = Mathf.Clamp(selectedIndex, 0, availableAnchors.Count - 1);
-        availableAnchors[selectedIndex].SetSelected(true);
+
+        // Включаем подсветку только выбранного
+        if (availableAnchors.Count > 0)
+            availableAnchors[selectedIndex].SetSelected(true);
     }
+
+    // Убираем ClearSelectionVFX, оно теперь не нужно
+    // void ClearSelectionVFX() { ... } - удаляем
+
 
     void ClearSelectionVFX()
     {
-        if (state == TeleportState.Selecting)
-            return;
-
         foreach (var la in allAnchors)
             la.SetSelected(false);
     }
@@ -209,17 +223,18 @@ public class PlayerLightTeleport : MonoBehaviour
 
         teleportTarget = availableAnchors[selectedIndex];
 
-        // 🔑 ВАЖНО:
-        // телепортируем игрока СРАЗУ, пока визуал выключен
+        // 🔑 КЛЮЧЕВОЕ ИСПРАВЛЕНИЕ:
+        // телепорт через Rigidbody, а не transform
         if (teleportTarget != null && teleportTarget.ExitPoint != null)
         {
-            transform.SetPositionAndRotation(
-                teleportTarget.ExitPoint.position,
-                teleportTarget.ExitPoint.rotation
-            );
+            playerRb.position = teleportTarget.ExitPoint.position;
+            playerRb.rotation = teleportTarget.ExitPoint.rotation;
+            playerRb.velocity = Vector3.zero;
+            Physics.SyncTransforms();
         }
 
         ClearSelectionVFX();
+
         StartCoroutine(TeleportFlightCoroutine(
             currentAnchor.ViewPoint,
             teleportTarget
@@ -233,17 +248,17 @@ public class PlayerLightTeleport : MonoBehaviour
         Vector3 startPos = fromView.position;
         Vector3 endPos = target.ViewPoint.position;
 
-        float time = 0f;
+        float t = 0f;
 
-        while (time < 1f)
+        while (t < 1f)
         {
-            time += Time.deltaTime / flightDuration;
+            t += Time.deltaTime / flightDuration;
 
-            Vector3 mid = Vector3.Lerp(startPos, endPos, time);
-            mid.y += Mathf.Sin(time * Mathf.PI) * flightArcHeight;
+            Vector3 pos = Vector3.Lerp(startPos, endPos, t);
+            pos.y += Mathf.Sin(t * Mathf.PI) * flightArcHeight;
 
-            cam.position = mid;
-            cam.rotation = Quaternion.LookRotation((endPos - mid).normalized);
+            cam.position = pos;
+            cam.rotation = Quaternion.LookRotation((endPos - pos).normalized);
 
             yield return null;
         }
@@ -254,7 +269,6 @@ public class PlayerLightTeleport : MonoBehaviour
     void CompleteTeleport()
     {
         state = TeleportState.Normal;
-
         teleportTarget = null;
 
         playerVisualRoot.SetActive(true);

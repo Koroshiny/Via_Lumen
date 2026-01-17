@@ -233,6 +233,7 @@ GameObject:
   - component: {fileID: 7285499023469174787}
   - component: {fileID: 7051878256915212353}
   - component: {fileID: 4518197000854284852}
+  - component: {fileID: 3206044208721691877}
   m_Layer: 0
   m_Name: LightAnchor
   m_TagString: LightAnchor
@@ -304,6 +305,30 @@ SphereCollider:
   serializedVersion: 3
   m_Radius: 4
   m_Center: {x: 6.24, y: -6, z: 6}
+--- !u!205 &3206044208721691877
+LODGroup:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 6872367597664962176}
+  serializedVersion: 2
+  m_LocalReferencePoint: {x: 0, y: 0, z: 0}
+  m_Size: 1
+  m_FadeMode: 0
+  m_AnimateCrossFading: 0
+  m_LastLODIsBillboard: 0
+  m_LODs:
+  - screenRelativeHeight: 0.6
+    fadeTransitionWidth: 0
+    renderers: []
+  - screenRelativeHeight: 0.3
+    fadeTransitionWidth: 0
+    renderers: []
+  - screenRelativeHeight: 0.1
+    fadeTransitionWidth: 0
+    renderers: []
+  m_Enabled: 1
 --- !u!1 &7382722114841743418
 GameObject:
   m_ObjectHideFlags: 0
