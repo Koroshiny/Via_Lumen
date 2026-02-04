@@ -13,6 +13,11 @@ TagManager:
   - 
   - Water
   - UI
+  - whatIsPlayer
+  - obstacleMask
+  - 
+  - whatIsWall
+  - whatIsGround
   - 
   - 
   - 
@@ -22,12 +27,7 @@ TagManager:
   - 
   - 
   - 
-  - 
-  - 
-  - 
-  - 
-  - 
-  - 
+  - PostProcessing
   - 
   - 
   - 
