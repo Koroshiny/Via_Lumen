@@ -38,10 +38,10 @@ public class SlideOnSplineAdvanced : MonoBehaviour
         t = 0f;
         sideOffset = 0f;
 
-        movement.movementEnabled = false;
+        //movement.movementEnabled = false;
         rb.isKinematic = true;
 
-        cam.SwitchCameraStyle(slideCamera);
+        //cam.SwitchCameraStyle(slideCamera);
 
         // VFX ON
         if (slideVFX != null)
@@ -83,9 +83,9 @@ public class SlideOnSplineAdvanced : MonoBehaviour
         sliding = false;
 
         rb.isKinematic = false;
-        movement.movementEnabled = true;
+        //movement.movementEnabled = true;
 
-        cam.SwitchCameraStyle(ThirdPersonCam.CameraStyle.Basic);
+        //cam.SwitchCameraStyle(ThirdPersonCam.CameraStyle.Basic);
 
         // VFX OFF
         if (slideVFX != null)
