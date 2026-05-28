@@ -9,9 +9,13 @@ Shader "Hidden/CinematicLitFog"
 
         _FogIntensity ("Fog Intensity", Range(0,1)) = 0.35
 
-        _NoiseScale ("Noise Scale", Float) = 0.01
-        _NoiseStrength ("Noise Strength", Range(0,1)) = 0.15
+        // Размер шума
+        _NoiseScale ("Noise Scale", Float) = 0.05
 
+        // Насколько noise влияет на форму тумана
+        _NoiseStrength ("Noise Strength", Range(0,1)) = 0.2
+
+        // Скорость движения
         _FogSpeed ("Fog Speed", Float) = 0.01
 
         [HDR]_LightColor ("Light Color", Color) = (1,1,1,1)
@@ -92,7 +96,10 @@ Shader "Hidden/CinematicLitFog"
 
             float hash(float2 p)
             {
-                return frac(sin(dot(p, float2(127.1, 311.7))) * 43758.5453123);
+                return frac(
+                    sin(dot(p, float2(127.1, 311.7)))
+                    * 43758.5453123
+                );
             }
 
             float noise(float2 p)
@@ -122,6 +129,7 @@ Shader "Hidden/CinematicLitFog"
 
                 float rawDepth = SampleSceneDepth(input.uv);
 
+                // Не применяем туман к небу
                 if (rawDepth >= 0.9999)
                 {
                     return sceneColor;
@@ -138,41 +146,56 @@ Shader "Hidden/CinematicLitFog"
                     UNITY_MATRIX_I_VP
                 );
 
+                // Distance fog
                 float fogFactor = smoothstep(
                     _FogStart,
                     _FogEnd,
                     linearDepth
                 );
 
+                // Pseudo-3D noise
+                // Y добавляет variation по высоте,
+                // чтобы noise не превращался в вертикальные полосы
                 float2 noiseUV =
-                    worldPos.xz * _NoiseScale +
-                    _Time.y * _FogSpeed;
+                    (
+                        worldPos.xz +
+                        worldPos.y * 0.25
+                    )
+                    * _NoiseScale
+                    + _Time.y * _FogSpeed;
 
                 float fogNoise = noise(noiseUV);
 
+                // Более мягкий noise
                 fogFactor *= lerp(
                     1.0,
-                    fogNoise,
+                    saturate(0.5 + fogNoise),
                     _NoiseStrength
                 );
 
                 fogFactor *= _FogIntensity;
 
-                // Directional light scattering
+                // Main directional light
                 Light mainLight = GetMainLight();
 
+                // От пикселя к камере
                 float3 viewDir =
-                    normalize(worldPos - _WorldSpaceCameraPos);
+                    normalize(
+                        _WorldSpaceCameraPos - worldPos
+                    );
 
+                // Насколько камера смотрит в сторону света
                 float lightDot = saturate(
                     dot(viewDir, -mainLight.direction)
                 );
 
+                // Cinematic scattering
                 float scattering = pow(
                     lightDot,
-                    lerp(1, 64, _LightScattering)
+                    lerp(1, 16, _LightScattering)
                 );
 
+                // Подсвеченный туман
                 float3 litFog =
                     _FogColor.rgb +
                     scattering *
@@ -180,6 +203,7 @@ Shader "Hidden/CinematicLitFog"
                     _LightIntensity *
                     mainLight.color;
 
+                // Финальный blend
                 sceneColor.rgb = lerp(
                     sceneColor.rgb,
                     litFog,
